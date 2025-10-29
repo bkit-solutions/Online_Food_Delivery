@@ -1,0 +1,21 @@
+body {
+    font-family: Arial;
+    background-color: #f4f4f4;
+    margin: 40px;
+}
+form {
+    background: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    width: 300px;
+}
+input[type="text"], input[type="password"] {
+    width: 100%;
+    padding: 8px;
+}
+input[type="submit"] {
+    background-color: green;
+    color: white;
+    border: none;
+    padding: 10px;
+}

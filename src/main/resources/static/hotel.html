@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Hotel Dashboard</title>
+  <style>
+    body { font-family: Arial; margin: 20px; }
+    h2 { color: #333; }
+    .tabs { margin-bottom: 20px; }
+    .tab {
+      display: inline-block;
+      margin-right: 10px;
+      padding: 10px 20px;
+      background-color: #eee;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .tab.active {
+      background-color: #ccc;
+      font-weight: bold;
+    }
+    .order {
+      border: 1px solid #ccc;
+      padding: 15px;
+      margin-bottom: 15px;
+      border-radius: 8px;
+    }
+    ul { padding-left: 20px; }
+    li { margin-bottom: 5px; }
+  </style>
+</head>
+<body>
+  <h2>Incoming Orders</h2>
+
+  <div class="tabs">
+    <div class="tab active" id="pendingTab" onclick="switchTab('PLACED')">Pending Orders</div>
+    <div class="tab" id="readyTab" onclick="switchTab('READY')">Ready Orders</div>
+	<button class="tab" onclick="window.location.href='login.html'">Logout</button>
+  </div>
+
+  <div id="orders">Loading...</div>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const hotel = urlParams.get("hotel");
+    let allOrders = [];
+    let currentStatus = "PLACED";
+
+    function switchTab(status) {
+      currentStatus = status;
+      document.getElementById("pendingTab").classList.remove("active");
+      document.getElementById("readyTab").classList.remove("active");
+
+      if (status === "PLACED") {
+        document.getElementById("pendingTab").classList.add("active");
+      } else {
+        document.getElementById("readyTab").classList.add("active");
+      }
+
+      renderOrders();
+    }
+
+    function renderOrders() {
+      const ordersDiv = document.getElementById("orders");
+      const filtered = allOrders.filter(order => order.status === currentStatus);
+
+      ordersDiv.innerHTML = "";
+
+      if (filtered.length === 0) {
+        ordersDiv.innerHTML = `No ${currentStatus.toLowerCase()} orders found.`;
+        return;
+      }
+
+      filtered.forEach(order => {
+        const div = document.createElement("div");
+        div.className = "order";
+
+        div.innerHTML = `
+          <h4>Order ID: ${order.id}</h4>
+          <p>Address: ${order.deliveryAddress}</p>
+          <ul>
+            ${order.orderItems.map(item =>
+              `<li>${item.foodName} - ₹${item.price} x ${item.quantity}</li>`
+            ).join("")}
+          </ul>
+          ${order.status === "PLACED" ? `<button onclick="markAsReady(${order.id})">Ready for Delivery</button>` : ""}
+        `;
+
+        ordersDiv.appendChild(div);
+      });
+    }
+
+    if (!hotel) {
+      document.getElementById("orders").innerHTML = "Hotel username missing in URL (e.g., ?hotel=hotel_sunshine)";
+    } else {
+      fetch(`/api/orders/hotel/${encodeURIComponent(hotel)}`)
+        .then(res => res.json())
+        .then(data => {
+          allOrders = data;
+          renderOrders();
+        })
+        .catch(err => {
+          console.error("Error fetching orders:", err);
+          document.getElementById("orders").innerHTML = "Failed to load orders.";
+        });
+    }
+
+    function markAsReady(orderId) {
+      fetch(`/api/orders/${orderId}/ready`, { method: "POST" })
+        .then(res => {
+          if (res.ok) {
+            alert("Order marked as ready for delivery!");
+            location.reload();
+          } else {
+            alert("Failed to update order status.");
+          }
+        })
+        .catch(err => {
+          console.error("Error marking order as ready:", err);
+          alert("Server error.");
+        });
+    }
+  </script>
+</body>
+</html>

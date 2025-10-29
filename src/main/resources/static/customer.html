@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer - Foodbox</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f7f7f7;
+            padding: 20px;
+        }
+        h2, h3 {
+            text-align: center;
+            color: #333;
+        }
+        .menu-category {
+            margin-bottom: 40px;
+        }
+        .category-title {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 20px;
+            color: #5f6368;
+        }
+        .food-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 20px;
+        }
+        .food-card {
+            background-color: #fff;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .food-card img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+        }
+        .food-card h4 {
+            margin: 10px 0 5px;
+            font-size: 18px;
+        }
+        .food-card p {
+            margin: 0;
+            font-size: 16px;
+            color: #666;
+        }
+        .food-card button {
+            margin: 10px;
+            background-color: #28a745;
+            color: white;
+            padding: 6px 12px;
+            border: none;
+            cursor: pointer;
+            border-radius: 4px;
+        }
+        .food-card button:hover {
+            background-color: #218838;
+        }
+        .cart, .address-form, .hotel-selection {
+            margin-top: 30px;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .cart-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 10px;
+            border-bottom: 1px solid #eee;
+            margin-bottom: 5px;
+        }
+        .quantity-button {
+            background-color: #ffc107;
+            color: white;
+            padding: 5px 10px;
+            border: none;
+            cursor: pointer;
+            margin-left: 5px;
+            border-radius: 4px;
+        }
+        .quantity-button:hover {
+            background-color: #e0a800;
+        }
+        .cart-button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            cursor: pointer;
+            display: block;
+            width: 100%;
+            margin-top: 20px;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        .cart-button:hover {
+            background-color: #0056b3;
+        }
+        .address-form textarea {
+            padding: 10px;
+            width: 100%;
+            height: 100px;
+            margin-bottom: 10px;
+            resize: none;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .hotel-selection select {
+            padding: 10px;
+            width: 100%;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #666;
+        }
+        .empty-message {
+            text-align: center;
+            color: #666;
+            padding: 20px;
+        }
+    </style>
+</head>
+<body>
+
+<h2>Food Menu</h2>
+
+<div class="hotel-selection">
+    <h3>Select Hotel</h3>
+    <select id="hotelSelect">
+        <option value="">-- Select Hotel --</option>
+    </select>
+</div>
+
+<div class="menu-category" id="vegItems">
+    <div class="category-title">Veg Items</div>
+    <div class="food-grid" id="vegFoodGrid">
+        <!-- Default empty message -->
+        <div class="empty-message">Please select a hotel to view menu</div>
+    </div>
+</div>
+
+<div class="menu-category" id="nonVegItems">
+    <div class="category-title">Non-Veg Items</div>
+    <div class="food-grid" id="nonVegFoodGrid"></div>
+</div>
+
+<div class="menu-category" id="drinksItems">
+    <div class="category-title">Drinks & Juices</div>
+    <div class="food-grid" id="drinksFoodGrid"></div>
+</div>
+
+<div class="cart">
+    <h3>Your Cart</h3>
+    <div id="cartItems"></div>
+    <button class="cart-button" onclick="checkout()">Proceed to Checkout</button>
+</div>
+
+<div class="address-form">
+    <h3>Enter Delivery Address</h3>
+    <textarea id="address" placeholder="Enter your delivery address"></textarea>
+    <button class="cart-button" onclick="submitOrder()">Submit Order</button>
+	<button class="cart-button" onclick="window.location.href='login.html'">Logout</button>
+</div>
+
+<script>
+    // Initialize cart if not exists
+    if (!localStorage.getItem('cart')) {
+        localStorage.setItem('cart', JSON.stringify([]));
+    }
+
+    // Load hotels on page load
+    window.onload = function() {
+        displayCart();
+        loadHotels();
+        
+        // Check if hotel parameter is passed in URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const hotelParam = urlParams.get('hotel');
+        if (hotelParam) {
+            document.getElementById('hotelSelect').value = hotelParam;
+            loadMenuItems(hotelParam);
+        }
+    };
+
+    // Load available hotels
+    function loadHotels() {
+        fetch("/api/hotels/names")
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error('Failed to load hotels');
+                }
+                return res.json();
+            })
+            .then(hotelNames => {
+                const hotelSelect = document.getElementById("hotelSelect");
+                hotelNames.forEach(hotelName => {
+                    const option = document.createElement("option");
+                    option.value = hotelName;
+                    option.textContent = hotelName;
+                    hotelSelect.appendChild(option);
+                });
+            })
+            .catch(error => {
+                console.error("Error loading hotels:", error);
+                document.getElementById("hotelSelect").innerHTML += 
+                    '<option value="" disabled>Error loading hotels</option>';
+            });
+    }
+
+    // Load menu items for selected hotel
+    function loadMenuItems(hotelName) {
+        // Show loading state
+        document.getElementById('vegFoodGrid').innerHTML = '<div class="loading">Loading menu...</div>';
+        document.getElementById('nonVegItems').style.display = 'none';
+        document.getElementById('drinksItems').style.display = 'none';
+        
+        fetch(`/api/hotels/${hotelName}/menu`)
+            .then(res => {
+                if (!res.ok) {
+                    throw new Error('Failed to load menu');
+                }
+                return res.json();
+            })
+            .then(menuItems => {
+                // Clear existing items
+                document.getElementById('vegFoodGrid').innerHTML = '';
+                document.getElementById('nonVegFoodGrid').innerHTML = '';
+                document.getElementById('drinksFoodGrid').innerHTML = '';
+                
+                // Group items by category
+                const vegItems = menuItems.filter(item => item.category === 'VEG');
+                const nonVegItems = menuItems.filter(item => item.category === 'NON_VEG');
+                const drinksItems = menuItems.filter(item => item.category === 'DRINKS_AND_JUICES');
+                
+                // Display veg items
+                if (vegItems.length > 0) {
+                    vegItems.forEach(item => {
+                        createFoodCard(item, 'vegFoodGrid');
+                    });
+                    document.getElementById('vegItems').style.display = 'block';
+                } else {
+                    document.getElementById('vegItems').style.display = 'none';
+                }
+                
+                // Display non-veg items
+                if (nonVegItems.length > 0) {
+                    nonVegItems.forEach(item => {
+                        createFoodCard(item, 'nonVegFoodGrid');
+                    });
+                    document.getElementById('nonVegItems').style.display = 'block';
+                } else {
+                    document.getElementById('nonVegItems').style.display = 'none';
+                }
+                
+                // Display drinks
+                if (drinksItems.length > 0) {
+                    drinksItems.forEach(item => {
+                        createFoodCard(item, 'drinksFoodGrid');
+                    });
+                    document.getElementById('drinksItems').style.display = 'block';
+                } else {
+                    document.getElementById('drinksItems').style.display = 'none';
+                }
+                
+                // Show message if no items found
+                if (menuItems.length === 0) {
+                    document.getElementById('vegFoodGrid').innerHTML = '<div class="empty-message">No menu items available for this hotel</div>';
+                    document.getElementById('vegItems').style.display = 'block';
+                }
+            })
+            .catch(error => {
+                console.error("Error loading menu:", error);
+                document.getElementById('vegFoodGrid').innerHTML = '<div class="empty-message">Error loading menu. Please try again.</div>';
+            });
+    }
+
+    // Create food card element
+    function createFoodCard(item, containerId) {
+        const container = document.getElementById(containerId);
+        const card = document.createElement('div');
+        card.className = 'food-card';
+        card.innerHTML = `
+            <img src="${item.imagePath || 'https://via.placeholder.com/200x150?text=No+Image'}" alt="${item.name}">
+            <h4>${item.name}</h4>
+            <p>₹${item.price}</p>
+            <button onclick="addToCart('${item.name}', ${item.price}, '${item.id}')">Add to Cart</button>
+        `;
+        container.appendChild(card);
+    }
+
+    // Add item to cart
+    function addToCart(name, price, itemId) {
+        const cart = JSON.parse(localStorage.getItem('cart'));
+        const existingItem = cart.find(item => item.id === itemId);
+
+        if (existingItem) {
+            existingItem.quantity += 1;
+        } else {
+            cart.push({ 
+                id: itemId,
+                name: name, 
+                price: price, 
+                quantity: 1 
+            });
+        }
+
+        localStorage.setItem('cart', JSON.stringify(cart));
+        displayCart();
+        alert(`${name} added to cart!`);
+    }
+
+    // Display cart items
+    function displayCart() {
+        const cart = JSON.parse(localStorage.getItem('cart'));
+        const cartItemsDiv = document.getElementById('cartItems');
+        cartItemsDiv.innerHTML = '';
+    
+        let grandTotal = 0;
+    
+        if (cart.length === 0) {
+            cartItemsDiv.innerHTML = '<div class="empty-message">Your cart is empty</div>';
+            return;
+        }
+    
+        cart.forEach(item => {
+            const itemTotal = item.price * item.quantity;
+            grandTotal += itemTotal;
+    
+            const div = document.createElement('div');
+            div.className = 'cart-item';
+            div.innerHTML = `
+                <span>${item.name} - ₹${item.price} × ${item.quantity} = ₹${itemTotal}</span>
+                <span>
+                    <button class="quantity-button" onclick="updateQuantity('${item.id}', 1)">+</button>
+                    <button class="quantity-button" onclick="updateQuantity('${item.id}', -1)">-</button>
+                </span>
+            `;
+            cartItemsDiv.appendChild(div);
+        });
+    
+        // Add grand total at the end
+        const totalDiv = document.createElement('div');
+        totalDiv.className = 'cart-item';
+        totalDiv.style.fontWeight = 'bold';
+        totalDiv.innerHTML = `
+            <span>Total Amount: ₹${grandTotal}</span>
+        `;
+        cartItemsDiv.appendChild(totalDiv);
+    }
+
+    // Update item quantity in cart
+    function updateQuantity(itemId, change) {
+        const cart = JSON.parse(localStorage.getItem('cart'));
+        const item = cart.find(item => item.id === itemId);
+
+        if (item) {
+            item.quantity += change;
+            if (item.quantity <= 0) {
+                const index = cart.indexOf(item);
+                cart.splice(index, 1);
+            }
+            localStorage.setItem('cart', JSON.stringify(cart));
+            displayCart();
+        }
+    }
+
+    // Proceed to checkout
+    function checkout() {
+        const cart = JSON.parse(localStorage.getItem('cart'));
+        if (cart.length === 0) {
+            alert("Your cart is empty!");
+            return;
+        }
+
+        const hotelSelect = document.getElementById('hotelSelect');
+        if (!hotelSelect.value) {
+            alert("Please select a hotel first.");
+            hotelSelect.focus();
+            return;
+        }
+
+        // Scroll to address form
+        document.querySelector('.address-form').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    // Submit order
+    function submitOrder() {
+        const address = document.getElementById('address').value.trim();
+        const hotelUsername = document.getElementById('hotelSelect').value;
+        const cart = JSON.parse(localStorage.getItem('cart'));
+
+        if (!hotelUsername) {
+            alert("Please select a hotel.");
+            return;
+        }
+
+        if (!address) {
+            alert("Please enter a delivery address.");
+            return;
+        }
+
+        if (cart.length === 0) {
+            alert("Your cart is empty!");
+            return;
+        }
+
+        const orderRequest = {
+            deliveryAddress: address,
+            hotel: hotelUsername,
+            cart: cart.map(item => ({
+                name: item.name,
+                price: item.price,
+                quantity: item.quantity
+            }))
+        };
+
+        fetch("/api/submit", {
+            method: "POST",
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(orderRequest)
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Order submission failed');
+            }
+            return response.text();
+        })
+        .then(message => {
+            alert(message);
+            // Clear cart and form
+            localStorage.setItem('cart', JSON.stringify([]));
+            document.getElementById('address').value = "";
+            displayCart();
+        })
+        .catch(error => {
+            console.error("Error:", error);
+            alert("Failed to place order. Please try again.");
+        });
+    }
+
+    // Handle hotel selection change
+    document.getElementById('hotelSelect').addEventListener('change', function() {
+        const selectedHotel = this.value;
+        if (selectedHotel) {
+            loadMenuItems(selectedHotel);
+        } else {
+            // Clear menu when no hotel is selected
+            document.getElementById('vegFoodGrid').innerHTML = '<div class="empty-message">Please select a hotel to view menu</div>';
+            document.getElementById('nonVegItems').style.display = 'none';
+            document.getElementById('drinksItems').style.display = 'none';
+        }
+    });
+</script>
+
+</body>

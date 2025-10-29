@@ -1,0 +1,298 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Admin Dashboard</title>
+  <style>
+    body {
+      background-color: white;
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 20px;
+    }
+
+    .form-container {
+      background-color: white;
+      border: 2px solid red;
+      box-shadow: 0 0 15px red;
+      padding: 20px;
+      max-width: 500px;
+      margin: 50px auto;
+      border-radius: 10px;
+    }
+
+    input, select, button {
+      width: 100%;
+      padding: 10px;
+      margin: 8px 0;
+      box-sizing: border-box;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+
+    button {
+      background-color: red;
+      color: white;
+      border: none;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background-color: darkred;
+    }
+
+    h2 {
+      text-align: center;
+    }
+
+    #itemSection {
+      display: none;
+      margin-top: 20px;
+      border-top: 1px solid #ccc;
+      padding-top: 20px;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+
+    table, th, td {
+      border: 1px solid #ccc;
+    }
+
+    th, td {
+      padding: 10px;
+      text-align: left;
+    }
+    
+    .remove-btn {
+      background-color: #ff4444;
+      padding: 5px 10px;
+      width: auto;
+    }
+    
+    .remove-btn:hover {
+      background-color: #cc0000;
+    }
+
+    .category-veg {
+      color: green;
+    }
+    .category-nonveg {
+      color: #b30000;
+    }
+    .category-drink {
+      color: #0066cc;
+    }
+  </style>
+</head>
+<body>
+  <div class="form-container">
+    <h2>Admin Dashboard - Create User</h2>
+    <form id="createUserForm">
+      <input type="text" name="username" placeholder="Username" required><br>
+      <input type="password" name="password" placeholder="Password" required><br>
+      <input type="email" name="email" placeholder="Email" required><br>
+      <select name="role" id="roleSelect" required>
+        <option value="">Select Role</option>
+        <option value="HOTEL">Hotel</option>
+        <option value="DELIVERY_BOY">Delivery Boy</option>
+        <option value="CUSTOMER">Customer</option>
+      </select><br>
+      
+      <!-- Address field (for customers) -->
+      <div id="addressSection" style="display: none;">
+        <input type="text" name="address" placeholder="Address">
+      </div>
+      
+      <!-- Hotel Item Section -->
+      <div id="itemSection">
+        <h3>Enter Item Details for Hotel</h3>
+        <input type="text" id="itemName" placeholder="Item Name">
+        <input type="number" id="itemPrice" placeholder="Price" step="0.01" min="0">
+        <select id="itemCategory">
+          <option value="Veg">Veg</option>
+          <option value="NonVeg">Non-Veg</option>
+          <option value="DrinksAndJuices">Drinks & Juices</option>
+        </select>
+        <input type="file" id="itemImage" accept="image/*">
+        <button type="button" onclick="addItem()">Add Item</button>
+
+        <table id="itemsTable">
+          <thead>
+            <tr>
+              <th>Item Name</th>
+              <th>Price</th>
+              <th>Category</th>
+              <th>Image File Name</th>
+              <th>Action</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+
+      <br>
+      <button type="submit">Create User</button>
+	  <button style="background-color: #dc3545;" onclick="window.location.href='login.html'">Logout</button>
+    </form>
+  </div>
+
+  <script>
+    const roleSelect = document.getElementById("roleSelect");
+    const itemSection = document.getElementById("itemSection");
+    const addressSection = document.getElementById("addressSection");
+    const itemsTable = document.getElementById("itemsTable").querySelector("tbody");
+    
+    let items = [];
+
+    roleSelect.addEventListener("change", () => {
+      if (roleSelect.value === "HOTEL") {
+        itemSection.style.display = "block";
+        addressSection.style.display = "none";
+      } else if (roleSelect.value === "CUSTOMER") {
+        itemSection.style.display = "none";
+        addressSection.style.display = "block";
+        items = [];
+        itemsTable.innerHTML = "";
+      } else {
+        itemSection.style.display = "none";
+        addressSection.style.display = "none";
+        items = [];
+        itemsTable.innerHTML = "";
+      }
+    });
+
+    function addItem() {
+      const name = document.getElementById("itemName").value.trim();
+      const price = parseFloat(document.getElementById("itemPrice").value.trim());
+      const category = document.getElementById("itemCategory").value;
+      const imageFile = document.getElementById("itemImage").files[0];
+
+      if (!name || isNaN(price) || !imageFile) {
+        alert("Please fill all item fields correctly.");
+        return;
+      }
+
+      const item = {
+        name,
+        price: price.toFixed(2),
+        category,
+        imageName: imageFile.name,
+        imageFile: imageFile
+      };
+
+      items.push(item);
+
+      const row = document.createElement("tr");
+      row.innerHTML = `
+        <td>${item.name}</td>
+        <td>$${item.price}</td>
+        <td class="category-${category.toLowerCase()}">${formatCategory(item.category)}</td>
+        <td>${item.imageName}</td>
+        <td><button type="button" class="remove-btn" onclick="removeItem(${items.length - 1})">Remove</button></td>
+      `;
+      itemsTable.appendChild(row);
+
+      // Clear input fields
+      document.getElementById("itemName").value = '';
+      document.getElementById("itemPrice").value = '';
+      document.getElementById("itemImage").value = '';
+    }
+
+    function formatCategory(category) {
+      switch(category) {
+        case "NonVeg": return "Non-Veg";
+        case "DrinksAndJuices": return "Drinks & Juices";
+        default: return category;
+      }
+    }
+
+    function removeItem(index) {
+      items.splice(index, 1);
+      renderItemsTable();
+    }
+
+    function renderItemsTable() {
+      itemsTable.innerHTML = '';
+      items.forEach((item, index) => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${item.name}</td>
+          <td>$${item.price}</td>
+          <td class="category-${item.category.toLowerCase()}">${formatCategory(item.category)}</td>
+          <td>${item.imageName}</td>
+          <td><button type="button" class="remove-btn" onclick="removeItem(${index})">Remove</button></td>
+        `;
+        itemsTable.appendChild(row);
+      });
+    }
+
+    document.getElementById("createUserForm").addEventListener("submit", async function(e) {
+      e.preventDefault();
+
+      const form = e.target;
+      const formData = new FormData(form);
+      const role = formData.get("role");
+      const username = formData.get("username");
+
+      // Validate hotel items
+      if (role === "HOTEL" && items.length === 0) {
+        alert("Please add at least one item for the hotel.");
+        return;
+      }
+
+      // Prepare the request data
+      const requestData = new FormData();
+      requestData.append("username", username);
+      requestData.append("password", formData.get("password"));
+      requestData.append("email", formData.get("email"));
+      requestData.append("role", role);
+      
+      // Add address if customer
+      if (role === "CUSTOMER") {
+        requestData.append("address", formData.get("address"));
+      }
+
+      if (role === "HOTEL") {
+        // Add items as JSON string
+        const itemsData = items.map(item => ({
+          name: item.name,
+          price: item.price,
+          category: item.category.toUpperCase().replace(/ /g, "_") // "Non-Veg" → "NON_VEG"
+        }));
+        requestData.append("items", JSON.stringify(itemsData));
+        
+        // Add image files
+        items.forEach((item, index) => {
+          requestData.append("images", item.imageFile);
+        });
+      }
+
+      try {
+        const response = await fetch("/api/admin/createUser", {
+          method: "POST",
+          body: requestData
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === "success") {
+          alert("User created successfully!");
+          form.reset();
+          itemSection.style.display = "none";
+          addressSection.style.display = "none";
+          items = [];
+          itemsTable.innerHTML = "";
+        } else {
+          alert("Error: " + data.message);
+        }
+      } catch (error) {
+        console.error("Error:", error);
+        alert("An error occurred while creating the user");
+      }
+    });
+  </script>
+</body>
+</html>

@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Delivery Boy Panel</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+    .tabs {
+      display: flex;
+      cursor: pointer;
+      padding: 10px;
+      background-color: #f4f4f4;
+      margin-bottom: 20px;
+    }
+    .tab {
+      padding: 10px 20px;
+      margin-right: 5px;
+      border: 1px solid #ddd;
+      background-color: #fff;
+      border-radius: 5px;
+    }
+    .tab:hover {
+      background-color: #f1f1f1;
+    }
+    .tab.active {
+      background-color: #007BFF;
+      color: white;
+    }
+    .order-box {
+      border: 1px solid #ccc;
+      padding: 15px;
+      margin-bottom: 10px;
+      border-radius: 8px;
+    }
+    ul {
+      list-style-type: none;
+      padding-left: 0;
+    }
+    li {
+      margin-bottom: 5px;
+    }
+    button {
+      padding: 5px 10px;
+      background-color: #28a745;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    button:disabled {
+      background-color: #ddd;
+      cursor: not-allowed;
+    }
+  </style>
+</head>
+<body>
+  <h2>Welcome, Delivery Boy!</h2>
+
+  <div class="tabs">
+    <div class="tab active" id="pendingTab">Pending Orders</div>
+    <div class="tab" id="completedTab">Completed Orders</div>
+	<div><button style="background-color: #dc3545;" onclick="window.location.href='login.html'">Logout</button></div>
+  </div>
+
+  <div id="orderList">Loading...</div>
+
+  <script>
+    async function fetchOrders(status) {
+      const url = status === 'READY' ? '/api/orders/ready' : '/api/orders/completed';
+      const response = await fetch(url);
+      const orders = await response.json();
+
+      const container = document.getElementById('orderList');
+      container.innerHTML = '';
+
+      if (!orders.length) {
+        container.innerHTML = `<p>No ${status.toLowerCase()} orders found.</p>`;
+        return;
+      }
+
+      orders.forEach(order => {
+        const div = document.createElement('div');
+        div.className = 'order-box';
+        div.innerHTML = `
+          <h3>Order ID: ${order.id}</h3>
+          <p>Delivery Address: ${order.deliveryAddress}</p>
+          <p>Hotel: ${order.hotel}</p>
+          <p>Status: ${order.status}</p>
+          <p><strong>Items:</strong></p>
+          <ul>
+            ${order.orderItems.map(item => `
+              <li>${item.foodName} × ${item.quantity} - ₹${item.price}</li>
+            `).join('')}
+          </ul>
+          ${status === 'READY' ? `
+            <button onclick="markOrderAsCompleted(${order.id})">Mark as Completed</button>
+          ` : ''}
+        `;
+        container.appendChild(div);
+      });
+    }
+
+    async function markOrderAsCompleted(orderId) {
+      const response = await fetch(`/api/orders/${orderId}/completed`, {
+        method: 'POST'
+      });
+
+      if (response.ok) {
+        alert('Order marked as completed!');
+        fetchOrders('READY');
+      } else {
+        alert('Error marking order as completed.');
+      }
+    }
+
+    // Tab switching
+    document.getElementById('pendingTab').addEventListener('click', () => {
+      document.getElementById('pendingTab').classList.add('active');
+      document.getElementById('completedTab').classList.remove('active');
+      fetchOrders('READY');
+    });
+
+    document.getElementById('completedTab').addEventListener('click', () => {
+      document.getElementById('completedTab').classList.add('active');
+      document.getElementById('pendingTab').classList.remove('active');
+      fetchOrders('COMPLETED');
+    });
+
+    window.onload = () => fetchOrders('READY');
+  </script>
+</body>
+</html>

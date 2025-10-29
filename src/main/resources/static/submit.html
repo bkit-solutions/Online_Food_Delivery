@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Submission - Foodbox</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f7f7f7;
+            padding: 20px;
+        }
+        h2 {
+            text-align: center;
+            color: #333;
+        }
+        .order-summary {
+            background-color: #fff;
+            padding: 20px;
+            border: 1px solid #ddd;
+            margin-bottom: 20px;
+        }
+        .order-summary h3 {
+            margin-bottom: 10px;
+            font-size: 24px;
+        }
+        .order-summary .item {
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 0;
+            border-bottom: 1px solid #ddd;
+        }
+        .order-summary .item:last-child {
+            border-bottom: none;
+        }
+        .order-summary .total {
+            font-size: 20px;
+            font-weight: bold;
+            padding-top: 10px;
+        }
+        .address-form {
+            margin-top: 20px;
+        }
+        .address-form textarea {
+            padding: 10px;
+            width: 100%;
+            height: 100px;
+            margin-bottom: 10px;
+            resize: none;
+        }
+        .submit-button {
+            background-color: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            cursor: pointer;
+            width: 100%;
+        }
+        .submit-button:hover {
+            background-color: #0056b3;
+        }
+    </style>
+</head>
+<body>
+
+<h2>Order Submission</h2>
+
+<div class="order-summary">
+    <h3>Order Summary</h3>
+    <div id="orderItems"></div>
+    <div class="total">
+        Total: ₹<span id="totalAmount">0</span>
+    </div>
+</div>
+
+<div class="address-form">
+    <h3>Enter Delivery Address</h3>
+    <textarea id="address" placeholder="Enter your delivery address"></textarea>
+    <button class="submit-button" onclick="submitOrder()">Submit Order</button>
+	<button style="background-color: #dc3545;" onclick="window.location.href='login.html'">Logout</button>
+</div>
+
+<script>
+    // Initialize cart in localStorage if it doesn't exist
+    if (!localStorage.getItem('cart')) {
+        localStorage.setItem('cart', JSON.stringify([]));
+    }
+
+    // Function to display the order items in the summary
+    function displayOrderSummary() {
+        const cart = JSON.parse(localStorage.getItem('cart'));
+        const orderItemsDiv = document.getElementById('orderItems');
+        const totalAmountDiv = document.getElementById('totalAmount');
+        let totalAmount = 0;
+
+        orderItemsDiv.innerHTML = ''; // Clear previous items
+
+        cart.forEach(item => {
+            const div = document.createElement('div');
+            div.className = 'item';
+            div.innerHTML = `${item.name} - ₹${item.price} x ${item.quantity}`;
+            orderItemsDiv.appendChild(div);
+            totalAmount += item.price * item.quantity;
+        });
+
+        totalAmountDiv.innerText = totalAmount;
+    }
+
+    // Function to submit the order
+    function submitOrder() {
+        const address = document.getElementById('address').value.trim();
+        const cart = JSON.parse(localStorage.getItem('cart'));
+
+        if (cart.length === 0) {
+            alert("Your cart is empty!");
+            return;
+        }
+
+        if (!address) {
+            alert("Please enter your delivery address.");
+            return;
+        }
+
+        const orderDetails = {
+            address: address,
+            items: cart.map(item => ({
+                name: item.name,
+                quantity: item.quantity,
+                price: item.price
+            })),
+            totalAmount: cart.reduce((total, item) => total + (item.price * item.quantity), 0),
+            status: "Pending"
+        };
+
+        // Send order details to backend via API
+        fetch("/api/orders/submit", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(orderDetails)
+        })
+        .then(response => response.json())
+        .then(data => {
+            alert("Order submitted successfully!");
+            localStorage.setItem('cart', JSON.stringify([])); // Clear the cart after submission
+            displayOrderSummary(); // Update the order summary display
+        })
+        .catch(error => {
+            console.error("Error submitting order:", error);
+            alert("Failed to submit order. Please try again.");
+        });
+    }
+
+    // Display the order summary on page load
+    displayOrderSummary();
+</script>
+
+</body>
+</html>
